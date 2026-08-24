@@ -1,0 +1,24 @@
+# Docker安装Server（云服务器 2核2G 适配版：ASR 用 sherpa-onnx，不挂 FunASR 模型）
+
+version: '3'
+services:
+  xiaozhi-esp32-server:
+    image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
+    container_name: xiaozhi-esp32-server
+    restart: always
+    security_opt:
+      - seccomp:unconfined
+    # 2核2G 硬约束：容器内存上限 1.2G，防止 OOM 拖垮系统
+    mem_limit: 1200m
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      # ws服务端
+      - "8000:8000"
+      # http服务的端口，用于简单OTA接口(单服务部署)，以及视觉分析接口
+      - "8003:8003"
+    volumes:
+      # 配置文件目录
+      - ./data:/opt/xiaozhi-esp32-server/data
+      # sherpa-onnx 语音识别模型持久化（容器首次启动自动从 modelscope 下载到此目录）
+      - ./models/sherpa-sensevoice:/opt/xiaozhi-esp32-server/models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17

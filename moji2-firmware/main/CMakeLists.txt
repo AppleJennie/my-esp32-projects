@@ -1,0 +1,21 @@
+idf_component_register(
+    SRCS
+        "main.c"
+        "bsp_display.c"
+        "bsp_audio.c"
+        "bsp_power.c"
+        "bsp_led.c"
+        "wifi_mgr.c"
+        "emoji.c"
+    INCLUDE_DIRS "."
+    PRIV_REQUIRES
+        esp_lcd
+        esp_wifi
+        esp_adc
+        nvs_flash
+        esp_driver_gpio
+        esp_driver_spi
+        esp_driver_i2c
+        esp_driver_i2s
+        esp_driver_ledc
+)

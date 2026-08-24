@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能枕头干预前后对比 — 融合算法评分体系</title>
+<style>
+:root {
+  --surface: #fcfcfb; --surface2: #f5f4f1; --text-primary: #0b0b0b;
+  --text-secondary: #52514e; --text-muted: #8b8a85;
+  --grid: #e5e4e1; --axis: #c3c2b7;
+  --blue: #2a78d6; --blue-fill: rgba(42,120,214,0.07);
+  --red: #dc2626; --red-fill: rgba(220,38,38,0.07);
+  --green: #10b981; --green-fill: rgba(16,185,129,0.07);
+  --purple: #8b5cf6; --purple-fill: rgba(139,92,246,0.07);
+  --orange: #f59e0b; --orange-fill: rgba(245,158,11,0.07);
+  --teal: #06b6d4; --teal-fill: rgba(6,182,212,0.07);
+  --pink: #ec4899; --pink-fill: rgba(236,72,153,0.07);
+  --pre-bg: rgba(239,68,68,0.04); --post-bg: rgba(16,185,129,0.04);
+  --intervention-line: #ef4444;
+  --card-good: #10b981; --card-bad: #ef4444; --card-neutral: #6b7280;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.10);
+}
+@media (prefers-color-scheme: dark) {
+:root {
+  --surface: #1a1a19; --surface2: #222220; --text-primary: #f0f0ee;
+  --text-secondary: #c3c2b7; --text-muted: #6b6a65;
+  --grid: #2d2d2b; --axis: #52514e;
+  --blue: #3987e5; --blue-fill: rgba(57,135,229,0.10);
+  --red: #ef4444; --red-fill: rgba(239,68,68,0.10);
+  --green: #34d399; --green-fill: rgba(52,211,153,0.10);
+  --purple: #a78bfa; --purple-fill: rgba(167,139,250,0.10);
+  --orange: #fbbf24; --orange-fill: rgba(251,191,36,0.10);
+  --teal: #22d3ee; --teal-fill: rgba(34,211,238,0.10);
+  --pink: #f472b6; --pink-fill: rgba(244,114,182,0.10);
+  --pre-bg: rgba(239,68,68,0.07); --post-bg: rgba(52,211,153,0.07);
+  --intervention-line: #f87171;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.5);
+}}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--surface); color: var(--text-primary);
+  display: flex; justify-content: center; padding: 24px;
+}
+.container { max-width: 1200px; width: 100%; }
+h1 { font-size: 22px; font-weight: 700; }
+.subtitle { color: var(--text-secondary); font-size: 13px; margin: 4px 0 20px; }
+.stats-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: 10px; padding: 16px; box-shadow: var(--shadow);
+  text-align: center;
+}
+.stat-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+.stat-value { font-size: 26px; font-weight: 700; }
+.stat-delta { font-size: 12px; margin-top: 2px; }
+.stat-delta.up { color: var(--card-good); }
+.stat-delta.down { color: var(--card-bad); }
+.chart-panel {
+  background: var(--surface); border: 1px solid var(--grid);
+  border-radius: 10px; padding: 20px 24px 12px; box-shadow: var(--shadow);
+  margin-bottom: 16px; position: relative;
+}
+.chart-title { font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+.chart-subtitle { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; }
+.chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.chart-container { position: relative; width: 100%; }
+svg { display: block; width: 100%; }
+.tooltip {
+  position: absolute; pointer-events: none; opacity: 0;
+  background: var(--text-primary); color: var(--surface);
+  font-size: 12px; padding: 8px 12px; border-radius: 8px;
+  white-space: nowrap; z-index: 10; line-height: 1.5;
+  font-family: "SF Mono","Consolas","Courier New",monospace;
+  box-shadow: var(--shadow-lg);
+}
+.legend { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; font-size: 11px; color: var(--text-secondary); }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+.phase-bar {
+  display: flex; height: 4px; border-radius: 2px; overflow: hidden;
+  margin-bottom: 16px;
+}
+.phase-pre { background: var(--intervention-line); flex: 1; }
+.phase-post { background: var(--green); flex: 1; }
+.footer-note { text-align: center; color: var(--text-muted); font-size: 11px; margin-top: 20px; padding-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>智能枕头干预前后对比 — 基于融合算法评分体系</h1>
+  <p class="subtitle">30 天睡眠监测数据 · 第 16 天（06/22）开始智能枕头干预 ·
+    R60 毫米波雷达 + SpO₂ + 鼾声 AI 多证据融合</p>
+
+  <div class="phase-bar">
+    <div class="phase-pre" title="干预前基线期 15 天"></div>
+    <div class="phase-post" title="干预后改善期 15 天"></div>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">干预前 平均融合评分</div>
+      <div class="stat-value" style="color:var(--card-bad)">41</div>
+      <div class="stat-delta down">建议关注 ~ 建议就医</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">干预后 平均融合评分</div>
+      <div class="stat-value" style="color:var(--card-good)">79</div>
+      <div class="stat-delta up">↑ +38 分 (92%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">rREI 改善</div>
+      <div class="stat-value" style="color:var(--card-good)">22.1→7.3</div>
+      <div class="stat-delta down">↓ 67%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">最低 SpO₂ 提升</div>
+      <div class="stat-value" style="color:var(--card-good)">79→82%</div>
+      <div class="stat-delta up">↑ +3%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">枕头调节摘要</div>
+      <div class="stat-value" style="color:var(--teal)">11次</div>
+      <div class="stat-delta">高度5.0cm · 角度14°</div>
+    </div>
+  </div>
+
+  <!-- Panel A + B: 2 columns -->
+  <div class="chart-row">
+    <div class="chart-panel">
+      <div class="chart-title">A. 融合评分 + rREI 双轴变化</div>
+      <div class="chart-subtitle">融合评分 = 事件负荷(0~50) + 低氧(0~35) + 自主神经(0~15) · rREI 为雷达呼吸事件指数</div>
+      <div class="chart-container" id="panelA"><div class="tooltip" id="ttA"></div></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--blue)"></span>融合评分 (0~100)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span>rREI (次/小时)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--intervention-line);width:20px;height:1px;border-top:2px dashed var(--intervention-line)"></span>干预开始</div>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">B. 呼吸幅度 + SpO₂ 双轴变化</div>
+      <div class="chart-subtitle">呼吸幅度为归一化值（基线=1.0）· SpO₂ 为夜间最低值</div>
+      <div class="chart-container" id="panelB"><div class="tooltip" id="ttB"></div></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--green)"></span>呼吸幅度 (norm)</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--purple)"></span>最低 SpO₂ (%)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel C + D: 2 columns -->
+  <div class="chart-row">
+    <div class="chart-panel">
+      <div class="chart-title">C. 体动 + 大幅体动</div>
+      <div class="chart-subtitle">体动次数来自雷达检测 · 虚线为融合引擎体动觉醒阈值 (30)</div>
+      <div class="chart-container" id="panelC"><div class="tooltip" id="ttC"></div></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--orange)"></span>体动次数</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span>大幅体动</div>
+      </div>
+    </div>
+    <div class="chart-panel">
+      <div class="chart-title">D. 呼吸事件统计 (apnea + hypopnea)</div>
+      <div class="chart-subtitle">雷达呼吸波形事件检测 · apnea=幅度降≥90% · hypopnea=幅度降30%~90%</div>
+      <div class="chart-container" id="panelD"><div class="tooltip" id="ttD"></div></div>
+      <div class="legend">
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--red)"></span>疑似呼吸暂停</div>
+        <div class="legend-item"><span class="legend-swatch" style="background:var(--orange)"></span>疑似低通气</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel E: 枕头调节日志 (full width) -->
+  <div class="chart-panel">
+    <div class="chart-title">E. 枕头调节幅度日志</div>
+    <div class="chart-subtitle">基于融合引擎输出自动调节 · 触发事件: 鼾声→加高度 / 呼吸暂停→加角度 / SpO₂下降→加高度</div>
+    <div class="chart-container" id="panelE"><div class="tooltip" id="ttE"></div></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--teal)"></span>枕头高度 (cm)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--pink)"></span>枕头角度 (°)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:var(--text-muted)" id="ttMarkerSwatch"></span>触发事件标注</div>
+    </div>
+  </div>
+
+  <p class="footer-note">
+    融合算法: A.呼吸事件负荷(0~50) + B.低氧负荷(0~35) + C.自主神经代偿(0~15) = 综合评分(0~100)
+    · 风险等级: ≥90 完美 / ≥75 观察级 / ≥50 建议关注 / ≥30 建议就医 / &lt;30 建议尽快评估
+    · ⚠️ 本演示数据为模拟生成，仅展示算法原理，不构成医学诊断
+  </p>
+</div>
+
+<script>
+// ── 数据 ──
+const NIGHTS = [{"night": 0, "date": "06/07", "phase": "pre", "snore_score": 0.46, "breath_amp": 0.7, "min_breath_amp_ratio": 0.5, "spo2_min": 93, "spo2_avg": 96.9, "body_motion": 27, "large_motion": 3, "rrei": 10.0, "apnea_like": 4, "hypopnea_like": 15, "snore_count": 15, "turn_over": 8, "hr_delta": 5.0, "no_hr_response": true, "score": 66, "event_load": 38, "hypoxia": 28, "autonomic": 0, "risk_level": "建议关注", "sleep_hours": 6.4, "scenario": "mild"}, {"night": 1, "date": "06/08", "phase": "pre", "snore_score": 0.85, "breath_amp": 0.34, "min_breath_amp_ratio": 0.34, "spo2_min": 87, "spo2_avg": 89.6, "body_motion": 31, "large_motion": 5, "rrei": 27.1, "apnea_like": 25, "hypopnea_like": 46, "snore_count": 36, "turn_over": 20, "hr_delta": 26.0, "no_hr_response": false, "score": 29, "event_load": 14, "hypoxia": 10, "autonomic": 5, "risk_level": "建议尽快评估", "sleep_hours": 5.8, "scenario": "moderate"}, {"night": 2, "date": "06/09", "phase": "pre", "snore_score": 0.71, "breath_amp": 0.38, "min_breath_amp_ratio": 0.22, "spo2_min": 85, "spo2_avg": 89.5, "body_motion": 22, "large_motion": 2, "rrei": 17.1, "apnea_like": 28, "hypopnea_like": 34, "snore_count": 35, "turn_over": 33, "hr_delta": 30.0, "no_hr_response": false, "score": 43, "event_load": 28, "hypoxia": 10, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 7.9, "scenario": "moderate"}, {"night": 3, "date": "06/10", "phase": "pre", "snore_score": 0.52, "breath_amp": 0.53, "min_breath_amp_ratio": 0.24, "spo2_min": 88, "spo2_avg": 91.5, "body_motion": 44, "large_motion": 4, "rrei": 22.8, "apnea_like": 23, "hypopnea_like": 43, "snore_count": 42, "turn_over": 29, "hr_delta": 24.0, "no_hr_response": false, "score": 43, "event_load": 20, "hypoxia": 18, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 7.7, "scenario": "moderate"}, {"night": 4, "date": "06/11", "phase": "pre", "snore_score": 0.64, "breath_amp": 0.41, "min_breath_amp_ratio": 0.22, "spo2_min": 85, "spo2_avg": 88.9, "body_motion": 37, "large_motion": 4, "rrei": 22.2, "apnea_like": 17, "hypopnea_like": 52, "snore_count": 29, "turn_over": 27, "hr_delta": 24.0, "no_hr_response": false, "score": 36, "event_load": 21, "hypoxia": 10, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 7.6, "scenario": "moderate"}, {"night": 5, "date": "06/12", "phase": "pre", "snore_score": 0.67, "breath_amp": 0.56, "min_breath_amp_ratio": 0.34, "spo2_min": 85, "spo2_avg": 87.4, "body_motion": 45, "large_motion": 6, "rrei": 19.4, "apnea_like": 18, "hypopnea_like": 25, "snore_count": 49, "turn_over": 33, "hr_delta": 18.0, "no_hr_response": false, "score": 45, "event_load": 25, "hypoxia": 10, "autonomic": 10, "risk_level": "建议就医", "sleep_hours": 6.9, "scenario": "moderate"}, {"night": 6, "date": "06/13", "phase": "pre", "snore_score": 0.81, "breath_amp": 0.3, "min_breath_amp_ratio": 0.1, "spo2_min": 83, "spo2_avg": 85.4, "body_motion": 52, "large_motion": 13, "rrei": 38.4, "apnea_like": 26, "hypopnea_like": 68, "snore_count": 49, "turn_over": 32, "hr_delta": 36.0, "no_hr_response": false, "score": 17, "event_load": 8, "hypoxia": 4, "autonomic": 5, "risk_level": "建议尽快评估", "sleep_hours": 6.8, "scenario": "severe"}, {"night": 7, "date": "06/14", "phase": "pre", "snore_score": 0.65, "breath_amp": 0.31, "min_breath_amp_ratio": 0.05, "spo2_min": 79, "spo2_avg": 80.6, "body_motion": 59, "large_motion": 7, "rrei": 39.7, "apnea_like": 40, "hypopnea_like": 73, "snore_count": 53, "turn_over": 14, "hr_delta": 29.0, "no_hr_response": false, "score": 12, "event_load": 7, "hypoxia": 0, "autonomic": 5, "risk_level": "建议尽快评估", "sleep_hours": 7.3, "scenario": "severe"}, {"night": 8, "date": "06/15", "phase": "pre", "snore_score": 0.7, "breath_amp": 0.47, "min_breath_amp_ratio": 0.14, "spo2_min": 87, "spo2_avg": 91.0, "body_motion": 30, "large_motion": 5, "rrei": 24.3, "apnea_like": 27, "hypopnea_like": 55, "snore_count": 49, "turn_over": 10, "hr_delta": 31.0, "no_hr_response": false, "score": 33, "event_load": 18, "hypoxia": 10, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 7.7, "scenario": "moderate"}, {"night": 9, "date": "06/16", "phase": "pre", "snore_score": 0.55, "breath_amp": 0.43, "min_breath_amp_ratio": 0.12, "spo2_min": 89, "spo2_avg": 93.6, "body_motion": 41, "large_motion": 4, "rrei": 22.0, "apnea_like": 14, "hypopnea_like": 55, "snore_count": 45, "turn_over": 11, "hr_delta": 31.0, "no_hr_response": false, "score": 44, "event_load": 21, "hypoxia": 18, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 6.7, "scenario": "moderate"}, {"night": 10, "date": "06/17", "phase": "pre", "snore_score": 0.77, "breath_amp": 0.28, "min_breath_amp_ratio": 0.31, "spo2_min": 85, "spo2_avg": 88.2, "body_motion": 40, "large_motion": 5, "rrei": 17.9, "apnea_like": 10, "hypopnea_like": 55, "snore_count": 20, "turn_over": 30, "hr_delta": 15.0, "no_hr_response": false, "score": 47, "event_load": 27, "hypoxia": 10, "autonomic": 10, "risk_level": "建议就医", "sleep_hours": 7.5, "scenario": "moderate"}, {"night": 11, "date": "06/18", "phase": "pre", "snore_score": 0.66, "breath_amp": 0.3, "min_breath_amp_ratio": 0.23, "spo2_min": 89, "spo2_avg": 93.4, "body_motion": 33, "large_motion": 5, "rrei": 16.8, "apnea_like": 24, "hypopnea_like": 43, "snore_count": 27, "turn_over": 14, "hr_delta": 27.0, "no_hr_response": true, "score": 46, "event_load": 28, "hypoxia": 18, "autonomic": 0, "risk_level": "建议就医", "sleep_hours": 6.7, "scenario": "moderate"}, {"night": 12, "date": "06/19", "phase": "pre", "snore_score": 0.51, "breath_amp": 0.51, "min_breath_amp_ratio": 0.15, "spo2_min": 85, "spo2_avg": 88.4, "body_motion": 42, "large_motion": 7, "rrei": 17.6, "apnea_like": 27, "hypopnea_like": 54, "snore_count": 40, "turn_over": 10, "hr_delta": 24.0, "no_hr_response": false, "score": 42, "event_load": 27, "hypoxia": 10, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 7.1, "scenario": "moderate"}, {"night": 13, "date": "06/20", "phase": "pre", "snore_score": 0.34, "breath_amp": 0.85, "min_breath_amp_ratio": 0.43, "spo2_min": 92, "spo2_avg": 95.6, "body_motion": 17, "large_motion": 1, "rrei": 13.4, "apnea_like": 9, "hypopnea_like": 16, "snore_count": 23, "turn_over": 13, "hr_delta": 15.0, "no_hr_response": false, "score": 71, "event_load": 33, "hypoxia": 28, "autonomic": 10, "risk_level": "建议关注", "sleep_hours": 6.4, "scenario": "mild"}, {"night": 14, "date": "06/21", "phase": "pre", "snore_score": 0.53, "breath_amp": 0.54, "min_breath_amp_ratio": 0.31, "spo2_min": 89, "spo2_avg": 93.4, "body_motion": 27, "large_motion": 2, "rrei": 22.2, "apnea_like": 13, "hypopnea_like": 41, "snore_count": 34, "turn_over": 13, "hr_delta": 26.0, "no_hr_response": false, "score": 44, "event_load": 21, "hypoxia": 18, "autonomic": 5, "risk_level": "建议就医", "sleep_hours": 7.8, "scenario": "moderate"}, {"night": 15, "date": "06/22", "phase": "post", "snore_score": 0.82, "breath_amp": 0.3, "min_breath_amp_ratio": 0.06, "spo2_min": 86.0, "spo2_avg": 89.1, "body_motion": 49, "large_motion": 12, "rrei": 35.3, "apnea_like": 30, "hypopnea_like": 72, "snore_count": 53, "turn_over": 10, "hr_delta": 33.0, "no_hr_response": false, "score": 24, "event_load": 9, "hypoxia": 10, "autonomic": 5, "risk_level": "建议尽快评估", "sleep_hours": 7.2, "scenario": "severe"}, {"night": 16, "date": "06/23", "phase": "post", "snore_score": 0.05, "breath_amp": 1.37, "min_breath_amp_ratio": 0.77, "spo2_min": 96.2, "spo2_avg": 99, "body_motion": 6, "large_motion": 0, "rrei": 1.0, "apnea_like": 2, "hypopnea_like": 1, "snore_count": 4, "turn_over": 17, "hr_delta": 3.0, "no_hr_response": false, "score": 95, "event_load": 45, "hypoxia": 35, "autonomic": 15, "risk_level": "完美", "sleep_hours": 8.0, "scenario": "normal"}, {"night": 17, "date": "06/24", "phase": "post", "snore_score": 0.48, "breath_amp": 0.41, "min_breath_amp_ratio": 0.15, "spo2_min": 82.4, "spo2_avg": 85, "body_motion": 32, "large_motion": 9, "rrei": 23.1, "apnea_like": 23, "hypopnea_like": 38, "snore_count": 30, "turn_over": 18, "hr_delta": 18.0, "no_hr_response": true, "score": 23, "event_load": 20, "hypoxia": 3, "autonomic": 0, "risk_level": "建议尽快评估", "sleep_hours": 7.6, "scenario": "severe"}, {"night": 18, "date": "06/25", "phase": "post", "snore_score": 0.32, "breath_amp": 1.11, "min_breath_amp_ratio": 0.45, "spo2_min": 98.8, "spo2_avg": 99, "body_motion": 9, "large_motion": 1, "rrei": 5.3, "apnea_like": 1, "hypopnea_like": 11, "snore_count": 9, "turn_over": 18, "hr_delta": 9.0, "no_hr_response": false, "score": 95, "event_load": 45, "hypoxia": 35, "autonomic": 15, "risk_level": "完美", "sleep_hours": 6.6, "scenario": "mild"}, {"night": 19, "date": "06/26", "phase": "post", "snore_score": 0.32, "breath_amp": 0.85, "min_breath_amp_ratio": 0.13, "spo2_min": 99, "spo2_avg": 99, "body_motion": 24, "large_motion": 3, "rrei": 8.2, "apnea_like": 8, "hypopnea_like": 14, "snore_count": 9, "turn_over": 4, "hr_delta": 24.0, "no_hr_response": false, "score": 81, "event_load": 41, "hypoxia": 35, "autonomic": 5, "risk_level": "观察级", "sleep_hours": 7.2, "scenario": "moderate"}, {"night": 20, "date": "06/27", "phase": "post", "snore_score": 0.03, "breath_amp": 1.5, "min_breath_amp_ratio": 0.75, "spo2_min": 99, "spo2_avg": 99, "body_motion": 3, "large_motion": 0, "rrei": 0.2, "apnea_like": 0, "hypopnea_like": 0, "snore_count": 2, "turn_over": 14, "hr_delta": 4.0, "no_hr_response": false, "score": 95, "event_load": 45, "hypoxia": 35, "autonomic": 15, "risk_level": "完美", "sleep_hours": 6.2, "scenario": "normal"}, {"night": 21, "date": "06/28", "phase": "post", "snore_score": 0.37, "breath_amp": 0.93, "min_breath_amp_ratio": 0.27, "spo2_min": 94.1, "spo2_avg": 98.5, "body_motion": 18, "large_motion": 3, "rrei": 11.2, "apnea_like": 6, "hypopnea_like": 17, "snore_count": 12, "turn_over": 10, "hr_delta": 15.0, "no_hr_response": false, "score": 74, "event_load": 36, "hypoxia": 28, "autonomic": 10, "risk_level": "建议关注", "sleep_hours": 6.9, "scenario": "moderate"}, {"night": 22, "date": "06/29", "phase": "post", "snore_score": 0.35, "breath_amp": 0.42, "min_breath_amp_ratio": 0.17, "spo2_min": 89.2, "spo2_avg": 92.2, "body_motion": 25, "large_motion": 6, "rrei": 11.9, "apnea_like": 16, "hypopnea_like": 20, "snore_count": 23, "turn_over": 1, "hr_delta": 33.0, "no_hr_response": false, "score": 58, "event_load": 35, "hypoxia": 18, "autonomic": 5, "risk_level": "建议关注", "sleep_hours": 7.5, "scenario": "severe"}, {"night": 23, "date": "06/30", "phase": "post", "snore_score": 0.2, "breath_amp": 0.48, "min_breath_amp_ratio": 0.29, "spo2_min": 99, "spo2_avg": 99, "body_motion": 13, "large_motion": 2, "rrei": 4.0, "apnea_like": 2, "hypopnea_like": 6, "snore_count": 13, "turn_over": 6, "hr_delta": 19.0, "no_hr_response": false, "score": 90, "event_load": 45, "hypoxia": 35, "autonomic": 10, "risk_level": "完美", "sleep_hours": 6.5, "scenario": "moderate"}, {"night": 24, "date": "07/01", "phase": "post", "snore_score": 0.08, "breath_amp": 1.26, "min_breath_amp_ratio": 0.41, "spo2_min": 99, "spo2_avg": 99, "body_motion": 6, "large_motion": 0, "rrei": 1.3, "apnea_like": 1, "hypopnea_like": 3, "snore_count": 2, "turn_over": 11, "hr_delta": 15.0, "no_hr_response": false, "score": 90, "event_load": 45, "hypoxia": 35, "autonomic": 10, "risk_level": "完美", "sleep_hours": 8.0, "scenario": "mild"}, {"night": 25, "date": "07/02", "phase": "post", "snore_score": 0.07, "breath_amp": 1.02, "min_breath_amp_ratio": 0.55, "spo2_min": 99, "spo2_avg": 99, "body_motion": 6, "large_motion": 0, "rrei": 1.5, "apnea_like": 0, "hypopnea_like": 2, "snore_count": 3, "turn_over": 1, "hr_delta": 13.0, "no_hr_response": false, "score": 90, "event_load": 45, "hypoxia": 35, "autonomic": 10, "risk_level": "完美", "sleep_hours": 6.4, "scenario": "mild"}, {"night": 26, "date": "07/03", "phase": "post", "snore_score": 0.2, "breath_amp": 0.22, "min_breath_amp_ratio": 0.09, "spo2_min": 98.9, "spo2_avg": 99, "body_motion": 20, "large_motion": 2, "rrei": 4.7, "apnea_like": 5, "hypopnea_like": 7, "snore_count": 15, "turn_over": 8, "hr_delta": 31.0, "no_hr_response": false, "score": 85, "event_load": 45, "hypoxia": 35, "autonomic": 5, "risk_level": "观察级", "sleep_hours": 8.2, "scenario": "severe"}, {"night": 27, "date": "07/04", "phase": "post", "snore_score": 0.07, "breath_amp": 1.5, "min_breath_amp_ratio": 0.74, "spo2_min": 99, "spo2_avg": 99, "body_motion": 4, "large_motion": 0, "rrei": 0.2, "apnea_like": 0, "hypopnea_like": 0, "snore_count": 2, "turn_over": 5, "hr_delta": 2.0, "no_hr_response": false, "score": 95, "event_load": 45, "hypoxia": 35, "autonomic": 15, "risk_level": "完美", "sleep_hours": 7.0, "scenario": "normal"}, {"night": 28, "date": "07/05", "phase": "post", "snore_score": 0.04, "breath_amp": 1.5, "min_breath_amp_ratio": 0.78, "spo2_min": 99, "spo2_avg": 99, "body_motion": 8, "large_motion": 0, "rrei": 0.1, "apnea_like": 0, "hypopnea_like": 0, "snore_count": 1, "turn_over": 7, "hr_delta": 5.0, "no_hr_response": false, "score": 95, "event_load": 45, "hypoxia": 35, "autonomic": 15, "risk_level": "完美", "sleep_hours": 7.3, "scenario": "normal"}, {"night": 29, "date": "07/06", "phase": "post", "snore_score": 0.11, "breath_amp": 1.5, "min_breath_amp_ratio": 0.64, "spo2_min": 99, "spo2_avg": 99, "body_motion": 3, "large_motion": 0, "rrei": 1.1, "apnea_like": 0, "hypopnea_like": 0, "snore_count": 0, "turn_over": 11, "hr_delta": 5.0, "no_hr_response": false, "score": 95, "event_load": 45, "hypoxia": 35, "autonomic": 15, "risk_level": "完美", "sleep_hours": 6.2, "scenario": "normal"}];
+const PILLOW = [{"night": 0, "date": "06/07", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 1, "date": "06/08", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 2, "date": "06/09", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 3, "date": "06/10", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 4, "date": "06/11", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 5, "date": "06/12", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 6, "date": "06/13", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 7, "date": "06/14", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 8, "date": "06/15", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 9, "date": "06/16", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 10, "date": "06/17", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 11, "date": "06/18", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 12, "date": "06/19", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 13, "date": "06/20", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 14, "date": "06/21", "height_cm": 0.0, "angle_deg": 0.0, "height_target": 0.0, "angle_target": 0.0, "trigger": "none"}, {"night": 15, "date": "06/22", "height_cm": 1.5, "angle_deg": 3.0, "height_target": 3.6, "angle_target": 3.5, "trigger": "snore+apnea+spo2_drop+motion_high"}, {"night": 16, "date": "06/23", "height_cm": 3.0, "angle_deg": 2.7, "height_target": 3.2, "angle_target": 2.7, "trigger": "relax"}, {"night": 17, "date": "06/24", "height_cm": 4.5, "angle_deg": 4.5, "height_target": 5.6, "angle_target": 4.5, "trigger": "hypopnea+spo2_drop+motion_high"}, {"night": 18, "date": "06/25", "height_cm": 5.6, "angle_deg": 6.3, "height_target": 5.6, "angle_target": 6.3, "trigger": "hypopnea"}, {"night": 19, "date": "06/26", "height_cm": 5.6, "angle_deg": 8.1, "height_target": 5.6, "angle_target": 8.1, "trigger": "hypopnea"}, {"night": 20, "date": "06/27", "height_cm": 5.2, "angle_deg": 7.3, "height_target": 5.2, "angle_target": 7.3, "trigger": "relax"}, {"night": 21, "date": "06/28", "height_cm": 5.2, "angle_deg": 9.1, "height_target": 5.2, "angle_target": 9.1, "trigger": "hypopnea"}, {"night": 22, "date": "06/29", "height_cm": 6.7, "angle_deg": 10.9, "height_target": 7.0, "angle_target": 10.9, "trigger": "hypopnea+spo2_drop"}, {"night": 23, "date": "06/30", "height_cm": 7.0, "angle_deg": 12.7, "height_target": 7.0, "angle_target": 12.7, "trigger": "hypopnea"}, {"night": 24, "date": "07/01", "height_cm": 6.6, "angle_deg": 13.7, "height_target": 6.6, "angle_target": 13.7, "trigger": "hypopnea"}, {"night": 25, "date": "07/02", "height_cm": 6.2, "angle_deg": 14.7, "height_target": 6.2, "angle_target": 14.7, "trigger": "hypopnea"}, {"night": 26, "date": "07/03", "height_cm": 6.2, "angle_deg": 15.0, "height_target": 6.2, "angle_target": 15.0, "trigger": "apnea"}, {"night": 27, "date": "07/04", "height_cm": 5.8, "angle_deg": 14.2, "height_target": 5.8, "angle_target": 14.2, "trigger": "relax"}, {"night": 28, "date": "07/05", "height_cm": 5.4, "angle_deg": 13.4, "height_target": 5.4, "angle_target": 13.4, "trigger": "relax"}, {"night": 29, "date": "07/06", "height_cm": 5.0, "angle_deg": 14.4, "height_target": 5.0, "angle_target": 14.4, "trigger": "hypopnea"}];
+const PRE_N = 15;
+const TOTAL_N = 30;
+
+// ── SVG 工具函数 ──
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}) {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+// ── 通用 Chart 类 ──
+class Chart {
+  constructor(containerId, W, H, M) {
+    this.W = W; this.H = H; this.M = M;
+    this.PW = W - M.left - M.right;
+    this.PH = H - M.top - M.bottom;
+    this.series = [];
+    this.hlines = [];
+    this.vlines = [];
+    this.div = document.getElementById(containerId);
+    this.svg = el("svg", { viewBox: `0 0 ${W} ${H}`, xmlns: NS, overflow: "visible" });
+    this.div.appendChild(this.svg);
+    this.xMin = 0; this.xMax = TOTAL_N - 1;
+  }
+
+  tx(i) { return this.M.left + (i - this.xMin) / (this.xMax - this.xMin) * this.PW; }
+  ty(v, yMin, yMax) { return this.M.top + this.PH - (v - yMin) / (yMax - yMin) * this.PH; }
+
+  addBackgroundZones() {
+    // 干预前红色背景
+    const x1 = this.tx(0), x2 = this.tx(PRE_N - 0.5);
+    this.svg.appendChild(el("rect", { x: x1, y: this.M.top, width: x2 - x1, height: this.PH,
+      fill: "var(--pre-bg)" }));
+    // 干预后绿色背景
+    const x3 = this.tx(PRE_N - 0.5), x4 = this.tx(TOTAL_N - 1);
+    this.svg.appendChild(el("rect", { x: x3, y: this.M.top, width: x4 - x3, height: this.PH,
+      fill: "var(--post-bg)" }));
+    // 稳定期标记
+    const xStable = this.tx(25);
+    this.svg.appendChild(el("line", { x1: xStable, y1: this.M.top, x2: xStable, y2: this.M.top + this.PH,
+      stroke: "var(--text-muted)", "stroke-width": "1", "stroke-dasharray": "2,4", opacity: "0.5" }));
+  }
+
+  drawGrid(yMin, yMax, yStep, leftLabel) {
+    for (let v = Math.ceil(yMin / yStep) * yStep; v <= yMax; v += yStep) {
+      const y = this.ty(v, yMin, yMax);
+      this.svg.appendChild(el("line", { x1: this.M.left, y1: y, x2: this.M.left + this.PW, y2: y,
+        stroke: "var(--grid)", "stroke-width": "1" }));
+      if (leftLabel) {
+        const lbl = el("text", { x: this.M.left - 8, y: y + 4, "text-anchor": "end",
+          fill: "var(--text-secondary)", "font-size": "10" });
+        lbl.textContent = v.toFixed(v % 1 === 0 ? 0 : 1);
+        this.svg.appendChild(lbl);
+      }
+    }
+    // X axis labels every 5 nights
+    for (let i = 0; i < TOTAL_N; i += 5) {
+      const x = this.tx(i);
+      const lbl = el("text", { x, y: this.M.top + this.PH + 16, "text-anchor": "middle",
+        fill: "var(--text-secondary)", "font-size": "10" });
+      lbl.textContent = NIGHTS[i].date;
+      this.svg.appendChild(lbl);
+    }
+  }
+
+  addHLine(yVal, yMin, yMax, label, color, dash) {
+    const y = this.ty(yVal, yMin, yMax);
+    this.svg.appendChild(el("line", { x1: this.M.left, y1: y, x2: this.M.left + this.PW, y2: y,
+      stroke: color, "stroke-width": "1.5", "stroke-dasharray": dash || "3,4", opacity: "0.6" }));
+    const lbl = el("text", { x: this.M.left + this.PW - 4, y: y - 5, "text-anchor": "end",
+      fill: color, "font-size": "9", opacity: "0.75" });
+    lbl.textContent = label;
+    this.svg.appendChild(lbl);
+  }
+
+  addVLine(nightIdx, label, color, dash) {
+    const x = this.tx(nightIdx - 0.5);
+    this.svg.appendChild(el("line", { x1: x, y1: this.M.top, x2: x, y2: this.M.top + this.PH,
+      stroke: color, "stroke-width": "2", "stroke-dasharray": dash || "6,3", opacity: "0.8" }));
+    const lbl = el("text", { x: x + 6, y: this.M.top + 16, fill: color, "font-size": "11", "font-weight": "600" });
+    lbl.textContent = label;
+    this.svg.appendChild(lbl);
+  }
+
+  addLine(dataKey, yMin, yMax, color, rightAxis, label) {
+    let d = "";
+    for (let i = 0; i < TOTAL_N; i++) {
+      const v = NIGHTS[i][dataKey];
+      const x = this.tx(i), y = this.ty(v, yMin, yMax);
+      d += `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)} `;
+    }
+    const path = el("path", { d, fill: "none", stroke: color, "stroke-width": "2.5",
+      "stroke-linejoin": "round", "stroke-linecap": "round" });
+    path.dataset.series = dataKey;
+    this.svg.appendChild(path);
+    this.series.push({ key: dataKey, yMin, yMax, color, label });
+  }
+
+  addArea(dataKey, yMin, yMax, color) {
+    let d = "";
+    for (let i = 0; i < TOTAL_N; i++) {
+      const v = NIGHTS[i][dataKey];
+      const x = this.tx(i), y = this.ty(v, yMin, yMax);
+      d += `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)} `;
+    }
+    d += `L${this.tx(TOTAL_N-1).toFixed(1)},${this.ty(yMin, yMin, yMax)} L${this.tx(0).toFixed(1)},${this.ty(yMin, yMin, yMax)} Z`;
+    this.svg.appendChild(el("path", { d, fill: color, stroke: "none" }));
+  }
+
+  addBars(dataKey, yMin, yMax, color, barWidth) {
+    const bw = barWidth || (this.PW / TOTAL_N * 0.6);
+    for (let i = 0; i < TOTAL_N; i++) {
+      const v = NIGHTS[i][dataKey];
+      const x = this.tx(i) - bw / 2;
+      const y = this.ty(v, yMin, yMax);
+      const h = this.ty(yMin, yMin, yMax) - y;
+      const bar = el("rect", { x, y, width: bw, height: Math.max(0, h),
+        fill: color, rx: "1.5", opacity: "0.75" });
+      bar.dataset.series = dataKey;
+      bar.dataset.night = i;
+      this.svg.appendChild(bar);
+    }
+    this.series.push({ key: dataKey, yMin, yMax, color, label: dataKey });
+  }
+
+  addPillowBars(yMin, yMax, color) {
+    const bw = this.PW / TOTAL_N * 0.6;
+    for (let i = 0; i < TOTAL_N; i++) {
+      const v = PILLOW[i].height_cm;
+      if (v <= 0) continue;
+      const x = this.tx(i) - bw / 2;
+      const y = this.ty(v, yMin, yMax);
+      const h = this.ty(0, yMin, yMax) - y;
+      this.svg.appendChild(el("rect", { x, y, width: bw, height: Math.max(0, h),
+        fill: color, rx: "1.5", opacity: "0.7" }));
+    }
+  }
+
+  addPillowAngleLine(yMin, yMax, color) {
+    let d = "";
+    for (let i = 0; i < TOTAL_N; i++) {
+      const v = PILLOW[i].angle_deg;
+      const x = this.tx(i), y = this.ty(v, yMin, yMax);
+      d += `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)} `;
+    }
+    this.svg.appendChild(el("path", { d, fill: "none", stroke: color, "stroke-width": "2.5",
+      "stroke-linejoin": "round", "stroke-linecap": "round" }));
+    // dots at adjustment points
+    for (let i = 0; i < TOTAL_N; i++) {
+      if (PILLOW[i].trigger !== "none" && PILLOW[i].trigger !== "relax") {
+        const v = PILLOW[i].angle_deg;
+        const x = this.tx(i), y = this.ty(v, yMin, yMax);
+        this.svg.appendChild(el("circle", { cx: x, cy: y, r: "4",
+          fill: color, stroke: "var(--surface)", "stroke-width": "1.5" }));
+      }
+    }
+  }
+
+  addPillowTriggerLabels(yMin, yMax) {
+    const labels = { "snore": "鼾", "apnea": "停", "hypopnea": "低", "spo2_drop": "氧", "motion_high": "动" };
+    for (let i = 0; i < TOTAL_N; i++) {
+      const t = PILLOW[i].trigger;
+      if (t === "none" || t === "relax") continue;
+      const triggers = t.split("+");
+      const x = this.tx(i);
+      const h = PILLOW[i].height_cm;
+      const baseY = this.ty(h > 0.3 ? h : 0.5, yMin, yMax) - 10;
+      triggers.forEach((tr, idx) => {
+        const short = labels[tr] || tr[0];
+        const lbl = el("text", { x, y: baseY - idx * 13, "text-anchor": "middle",
+          fill: "var(--text-secondary)", "font-size": "9", "font-weight": "600" });
+        lbl.textContent = short;
+        this.svg.appendChild(lbl);
+      });
+    }
+  }
+
+  drawAxis(yMin, yMax) {
+    this.svg.appendChild(el("rect", { x: this.M.left, y: this.M.top,
+      width: this.PW, height: this.PH, fill: "none", stroke: "var(--axis)", "stroke-width": "1" }));
+  }
+
+  createRightAxis(yMin, yMax, label, color) {
+    // draw right-side values
+    const step = (yMax - yMin) / 5;
+    for (let v = yMin; v <= yMax + step * 0.5; v += step) {
+      const y = this.ty(v, yMin, yMax);
+      const lbl = el("text", { x: this.M.left + this.PW + 8, y: y + 4, "text-anchor": "start",
+        fill: color, "font-size": "10", "font-weight": "500" });
+      lbl.textContent = v.toFixed(v % 1 === 0 ? 0 : 1);
+      this.svg.appendChild(lbl);
+    }
+    // Label
+    const lblEl = el("text", { x: this.M.left + this.PW + 32, y: this.M.top + this.PH / 2,
+      "text-anchor": "middle", fill: color, "font-size": "11", "font-weight": "600",
+      transform: `rotate(90,${this.M.left + this.PW + 32},${this.M.top + this.PH / 2})` });
+    lblEl.textContent = label;
+    this.svg.appendChild(lblEl);
+  }
+
+  createLeftAxis(yMin, yMax, label, color) {
+    const lblEl = el("text", { x: 12, y: this.M.top + this.PH / 2,
+      "text-anchor": "middle", fill: color, "font-size": "11", "font-weight": "600",
+      transform: `rotate(-90,12,${this.M.top + this.PH / 2})` });
+    lblEl.textContent = label;
+    this.svg.appendChild(lblEl);
+  }
+
+  createHoverTooltip(tooltipId, getHtml) {
+    const tooltip = document.getElementById(tooltipId);
+    const svgEl = this.svg;
+    const chartDiv = this.div;
+    const self = this;
+
+    svgEl.addEventListener("mousemove", (e) => {
+      const rect = svgEl.getBoundingClientRect();
+      const scaleX = self.W / rect.width;
+      const svgX = (e.clientX - rect.left) * scaleX;
+      let best = -1, bestDist = Infinity;
+      for (let i = 0; i < TOTAL_N; i++) {
+        const dist = Math.abs(self.tx(i) - svgX);
+        if (dist < bestDist) { bestDist = dist; best = i; }
+      }
+      if (bestDist < 30 * scaleX && best >= 0) {
+        tooltip.style.opacity = "1";
+        tooltip.style.left = (e.clientX - chartDiv.getBoundingClientRect().left + 14) + "px";
+        tooltip.style.top = (e.clientY - chartDiv.getBoundingClientRect().top - 50) + "px";
+        tooltip.innerHTML = getHtml(best);
+      }
+    });
+    svgEl.addEventListener("mouseleave", () => { tooltip.style.opacity = "0"; });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Panel A: 融合评分 + rREI 双轴
+// ═══════════════════════════════════════════════════════════════
+(() => {
+  const M = { top: 48, right: 60, bottom: 38, left: 54 };
+  const chart = new Chart("panelA", 600, 320, M);
+  const scoreMin = 25, scoreMax = 100;
+  const rreiMin = 0, rreiMax = 42;
+
+  chart.addBackgroundZones();
+  chart.drawGrid(scoreMin, scoreMax, 10, true);
+  chart.addArea("score", scoreMin, scoreMax, "var(--blue-fill)");
+  chart.addLine("score", scoreMin, scoreMax, "var(--blue)", false, "融合评分");
+  chart.createRightAxis(rreiMin, rreiMax, "rREI (次/小时)", "var(--red)");
+  chart.addLine("rrei", rreiMin, rreiMax, "var(--red)", true, "rREI");
+  chart.addVLine(PRE_N, "干预开始", "var(--intervention-line)", "6,3");
+  chart.addHLine(THRESH_SCORE_MODERATE, scoreMin, scoreMax, "建议关注(50)", "var(--orange)", "3,4");
+  chart.addHLine(THRESH_SCORE_MILD, scoreMin, scoreMax, "观察级(75)", "var(--teal)", "3,4");
+  chart.createLeftAxis(scoreMin, scoreMax, "融合评分 (0~100)", "var(--blue)");
+  chart.drawAxis(scoreMin, scoreMax);
+  chart.createHoverTooltip("ttA", (i) => {
+    const n = NIGHTS[i];
+    return `第${i+1}晚 ${n.date}<br/>`
+      + `融合评分: <b style="color:var(--blue)">${n.score}</b> (${n.risk_level})<br/>`
+      + `rREI: <b style="color:var(--red)">${n.rrei}</b> 次/小时<br/>`
+      + `子维度: 事件${n.event_load} + 低氧${n.hypoxia} + 自主神经${n.autonomic}<br/>`
+      + `阶段: ${i < PRE_N ? "干预前·基线期" : i < 25 ? "干预后·调节期" : "干预后·稳定期"}`;
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Panel B: 呼吸幅度 + SpO2 双轴
+// ═══════════════════════════════════════════════════════════════
+(() => {
+  const M = { top: 48, right: 60, bottom: 38, left: 54 };
+  const chart = new Chart("panelB", 600, 320, M);
+  const ampMin = 0.05, ampMax = 1.55;
+  const spo2Min = 78, spo2Max = 100;
+
+  chart.addBackgroundZones();
+  chart.drawGrid(ampMin, ampMax, 0.2, true);
+  chart.addArea("breath_amp", ampMin, ampMax, "var(--green-fill)");
+  chart.addLine("breath_amp", ampMin, ampMax, "var(--green)", false, "呼吸幅度");
+  chart.createRightAxis(spo2Min, spo2Max, "最低 SpO₂ (%)", "var(--purple)");
+  chart.addLine("spo2_min", spo2Min, spo2Max, "var(--purple)", true, "SpO₂");
+  chart.addVLine(PRE_N, "干预开始", "var(--intervention-line)", "6,3");
+  chart.addHLine(1.0, ampMin, ampMax, "基线 1.0", "var(--text-muted)", "6,3");
+  chart.addHLine(spo2_hypoxia, spo2Min, spo2Max, "低氧阈值 90%", "var(--purple)", "3,4");
+  chart.createLeftAxis(ampMin, ampMax, "呼吸幅度 (归一化)", "var(--green)");
+  chart.drawAxis(ampMin, ampMax);
+  chart.createHoverTooltip("ttB", (i) => {
+    const n = NIGHTS[i];
+    return `第${i+1}晚 ${n.date}<br/>`
+      + `呼吸幅度: <b style="color:var(--green)">${n.breath_amp.toFixed(2)}</b> (基线=1.0)<br/>`
+      + `最低SpO₂: <b style="color:var(--purple)">${n.spo2_min}%</b> 平均: ${n.spo2_avg}%<br/>`
+      + `最低幅度比: ${n.min_breath_amp_ratio.toFixed(2)}`;
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Panel C: 体动
+// ═══════════════════════════════════════════════════════════════
+(() => {
+  const M = { top: 48, right: 20, bottom: 38, left: 54 };
+  const chart = new Chart("panelC", 600, 280, M);
+  const motMin = 0, motMax = 65;
+
+  chart.addBackgroundZones();
+  chart.drawGrid(motMin, motMax, 10, true);
+  chart.addBars("body_motion", motMin, motMax, "var(--orange)", 10);
+  chart.addLine("large_motion", motMin, motMax, "var(--red)", false, "大幅体动");
+  chart.addVLine(PRE_N, "干预开始", "var(--intervention-line)", "6,3");
+  chart.addHLine(THRESH_MOTION_AROUSAL, motMin, motMax, "体动觉醒阈值 30", "var(--red)", "3,4");
+  chart.addHLine(THRESH_MOTION_BASELINE, motMin, motMax, "基线采集阈值 15", "var(--text-muted)", "3,4");
+  chart.createLeftAxis(motMin, motMax, "次数", "var(--orange)");
+  chart.drawAxis(motMin, motMax);
+  chart.createHoverTooltip("ttC", (i) => {
+    const n = NIGHTS[i];
+    return `第${i+1}晚 ${n.date}<br/>`
+      + `体动次数: <b style="color:var(--orange)">${n.body_motion}</b><br/>`
+      + `大幅体动: <b style="color:var(--red)">${n.large_motion}</b><br/>`
+      + `翻身: ${n.turn_over} 次`;
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Panel D: 呼吸事件统计
+// ═══════════════════════════════════════════════════════════════
+(() => {
+  const M = { top: 48, right: 20, bottom: 38, left: 54 };
+  const chart = new Chart("panelD", 600, 280, M);
+  const evtMin = 0, evtMax = 90;
+
+  chart.addBackgroundZones();
+  chart.drawGrid(evtMin, evtMax, 15, true);
+  chart.addBars("hypopnea_like", evtMin, evtMax, "var(--orange)", 10);
+  chart.addLine("apnea_like", evtMin, evtMax, "var(--red)", false, "呼吸暂停");
+  chart.addVLine(PRE_N, "干预开始", "var(--intervention-line)", "6,3");
+  chart.createLeftAxis(evtMin, evtMax, "事件次数", "var(--red)");
+  chart.drawAxis(evtMin, evtMax);
+  chart.createHoverTooltip("ttD", (i) => {
+    const n = NIGHTS[i];
+    return `第${i+1}晚 ${n.date}<br/>`
+      + `疑似呼吸暂停: <b style="color:var(--red)">${n.apnea_like}</b><br/>`
+      + `疑似低通气: <b style="color:var(--orange)">${n.hypopnea_like}</b><br/>`
+      + `总计: ${n.apnea_like + n.hypopnea_like} · rREI: ${n.rrei}<br/>`
+      + `鼾声次数: ${n.snore_count} · 概率: ${(n.snore_score*100).toFixed(0)}%`;
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// Panel E: 枕头调节日志
+// ═══════════════════════════════════════════════════════════════
+(() => {
+  const M = { top: 48, right: 60, bottom: 42, left: 54 };
+  const chart = new Chart("panelE", 1200, 330, M);
+  const hMin = 0, hMax = 8.5;
+  const aMin = 0, aMax = 16;
+
+  chart.addBackgroundZones();
+  chart.drawGrid(hMin, hMax, 1, true);
+  chart.addPillowBars(hMin, hMax, "var(--teal)");
+  chart.createRightAxis(aMin, aMax, "角度 (°)", "var(--pink)");
+  chart.addPillowAngleLine(aMin, aMax, "var(--pink)");
+  chart.addPillowTriggerLabels(hMin, hMax);
+  chart.addVLine(PRE_N, "干预开始", "var(--intervention-line)", "6,3");
+  chart.addHLine(8.0, hMin, hMax, "最大高度 8cm", "var(--teal)", "2,4");
+  chart.addHLine(15.0, hMin, hMax, "最大角度 15°", "var(--pink)", "2,4");
+  chart.createLeftAxis(hMin, hMax, "高度 (cm)", "var(--teal)");
+
+  // 阶段标签
+  const xPreMid = chart.tx(7);
+  const lPre = el("text", { x: xPreMid, y: M.top - 28, "text-anchor": "middle",
+    fill: "var(--intervention-line)", "font-size": "11", "font-weight": "600", opacity: "0.8" });
+  lPre.textContent = "干预前基线期 (15晚)";
+  chart.svg.appendChild(lPre);
+  const xPostMid = chart.tx(22);
+  const lPost = el("text", { x: xPostMid, y: M.top - 16, "text-anchor": "middle",
+    fill: "var(--green)", "font-size": "11", "font-weight": "600", opacity: "0.8" });
+  lPost.textContent = "干预后改善期 (15晚)";
+  chart.svg.appendChild(lPost);
+
+  chart.drawAxis(hMin, hMax);
+  chart.createHoverTooltip("ttE", (i) => {
+    const p = PILLOW[i];
+    const labels = { "snore": "鼾声触发→加高度", "apnea": "呼吸暂停→加角度",
+      "hypopnea": "低通气→加角度", "spo2_drop": "SpO₂下降→加高度",
+      "motion_high": "体动过多→微调高度", "relax": "指标良好→逐步回落", "none": "无调节" };
+    const t = p.trigger.split("+").map(t => labels[t] || t).join(" + ");
+    return `第${i+1}晚 ${p.date}<br/>`
+      + `枕头高度: <b style="color:var(--teal)">${p.height_cm}cm</b> (目标: ${p.height_target}cm)<br/>`
+      + `枕头角度: <b style="color:var(--pink)">${p.angle_deg}°</b> (目标: ${p.angle_target}°)<br/>`
+      + `触发: ${t}`;
+  });
+})();
+
+// ── 阈值常量同步 ──
+const THRESH_SCORE_MODERATE = 50;
+const THRESH_SCORE_MILD = 75;
+const THRESH_SPO2_HYPOXIA = 90;
+const THRESH_MOTION_AROUSAL = 30;
+const THRESH_MOTION_BASELINE = 15;
+const spo2_hypoxia = 90;
+</script>
+</body>
+</html>

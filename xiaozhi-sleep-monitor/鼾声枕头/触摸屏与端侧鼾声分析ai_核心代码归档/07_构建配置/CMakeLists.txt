@@ -1,0 +1,30 @@
+idf_component_register(
+    SRC_DIRS
+        "."
+        "APP"
+        "APP/ui/fonts"
+        "audio"
+        "audio/snore_micro"
+        "audio/snore_micro/microfrontend"
+    INCLUDE_DIRS
+        "."
+        "APP"
+        "APP/ui/fonts"
+        "audio"
+        "audio/snore_micro"
+        "audio/snore_micro/microfrontend"
+    REQUIRES
+        driver
+        BSP
+        esp_wifi
+        esp_netif
+        nvs_flash
+        esp_http_client
+        fatfs
+        esp_timer
+        json
+        lvgl__lvgl
+        esp-nn
+        esp-tflite-micro
+        bt
+        json )

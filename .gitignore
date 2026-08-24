@@ -1,0 +1,7 @@
+# macOS
+.DS_Store
+
+# ESP-IDF 编译产物与自动下载的组件（不进仓库）
+build/
+managed_components/
+sdkconfig.old

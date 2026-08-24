@@ -1,0 +1,63 @@
+在 drivers/r60abd1_uart.c 中增加 query task 启动。当前工程只有 r60abd1_uart_task 被启动，r60abd1_query_task 没被创建，会导致 R60 只收到少量初始字节、不持续查询心率/呼吸。
+
+推荐最小改法：
+
+1) 文件顶部静态变量区增加：
+
+static TaskHandle_t s_uart_task_handle = NULL;
+static TaskHandle_t s_query_task_handle = NULL;
+static volatile bool s_uart_running = false;
+static volatile bool s_query_running = false;
+
+2) r60abd1_uart_task 的 while (1) 改为：
+
+while (s_uart_running) {
+    ...
+}
+s_uart_task_handle = NULL;
+vTaskDelete(NULL);
+
+3) r60abd1_query_task 的 while (1) 改为：
+
+while (s_query_running) {
+    ...
+}
+s_query_task_handle = NULL;
+vTaskDelete(NULL);
+
+4) r60abd1_uart_start_task() 替换为：
+
+esp_err_t r60abd1_uart_start_task(void)
+{
+    if (s_uart_task_handle != NULL) return ESP_OK;
+
+    s_uart_running = true;
+    BaseType_t ok = xTaskCreatePinnedToCore(
+        r60abd1_uart_task, "r60_uart",
+        6144, NULL, 8, &s_uart_task_handle, 1);
+    if (ok != pdPASS) {
+        s_uart_running = false;
+        return ESP_FAIL;
+    }
+
+    s_query_running = true;
+    ok = xTaskCreatePinnedToCore(
+        r60abd1_query_task, "r60_query",
+        4096, NULL, 5, &s_query_task_handle, 1);
+    if (ok != pdPASS) {
+        ESP_LOGE(TAG, "R60 query task start failed");
+        s_query_running = false;
+        return ESP_FAIL;
+    }
+
+    ESP_LOGI(TAG, "R60 UART RX task + query task started");
+    return ESP_OK;
+}
+
+5) r60abd1_uart_stop_task() 替换为：
+
+void r60abd1_uart_stop_task(void)
+{
+    s_uart_running = false;
+    s_query_running = false;
+}

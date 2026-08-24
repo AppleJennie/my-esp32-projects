@@ -1,0 +1,29 @@
+在 fusion_task.cc 中至少修以下两个点：
+
+1) fusion_tick_task 内 fr 未初始化风险。把：
+
+fusion_result_t fr;
+if (sleep_fusion_get_result(&fr)) {
+    ...
+}
+...
+ESP_LOGI(... sleep_fusion_event_label(fr.event), fr.severity);
+
+改为：
+
+fusion_result_t fr;
+memset(&fr, 0, sizeof(fr));
+fr.event = FUSION_DATA_QUALITY_LOW;
+if (sleep_fusion_get_result(&fr)) {
+    ...
+}
+
+2) health_fusion_tick 传入的 af_latest/rf_latest 当前没有严格按 freshness 处理。建议：
+
+if (!snore_report_is_fresh(SNORE_STALE_MS)) {
+    memset(&af_latest, 0, sizeof(af_latest));
+}
+
+if (!sleep_radar_data_is_fresh(radar_snapshot.last_update_ms, RADAR_STALE_MS)) {
+    memset(&rf_latest, 0, sizeof(rf_latest));
+}

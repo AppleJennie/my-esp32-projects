@@ -1,0 +1,19 @@
+menu "Moji2 配置"
+
+    config MOJI_WIFI_SSID
+        string "Wi-Fi SSID"
+        default ""
+        help
+            要连接的 Wi-Fi 名称。ESP32-C5 支持 2.4G/5G 双频，
+            建议连接 5GHz 频段以降低语音交互延迟。留空则跳过 Wi-Fi 连接。
+
+    config MOJI_WIFI_PASSWORD
+        string "Wi-Fi 密码"
+        default ""
+
+    config MOJI_LCD_BACKLIGHT
+        int "默认屏幕背光亮度 (0-100)"
+        range 0 100
+        default 80
+
+endmenu

@@ -1,0 +1,6 @@
+dependencies:
+  # ST77916 QSPI 屏幕驱动（esp_lcd 组件）
+  espressif/esp_lcd_st77916: "^1"
+  # WS2812 (TX1812) RGB 灯驱动
+  espressif/led_strip: "^3"
+  idf: ">=6.0"

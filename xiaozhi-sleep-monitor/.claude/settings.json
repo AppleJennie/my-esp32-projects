@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"D:/embed32/s3example/23_rgb/basic_routines/\")",
+      "Read(//d/embed32/s3example/23_rgb/basic_routines/**)",
+      "Read(//d/embed32/s3example/**)",
+      "Bash(ls -la \"D:/BaiduNetdiskDownload/【正点原子】DNESP32S3开发板/【正点原子】DNESP32S3开发板资料（A盘）/\")",
+      "Read(//d/BaiduNetdiskDownload/【正点原子】DNESP32S3开发板/【正点原子】DNESP32S3开发板资料（A盘）/**)",
+      "Bash(cp \"D:/embed32/s3example/rgblcd43/01_lvgl_transplant/main/drivers/r60abd1_uart.c\" \"d:/embed32/xiaozhi-esp32-main/main/drivers/r60abd1_uart.c\")",
+      "Bash(cp \"D:/embed32/s3example/rgblcd43/01_lvgl_transplant/main/drivers/r60abd1_uart.h\" \"d:/embed32/xiaozhi-esp32-main/main/drivers/r60abd1_uart.h\")",
+      "Bash(cp \"D:/embed32/s3example/rgblcd43/01_lvgl_transplant/main/APP/sleep_algorithm.c\" \"d:/embed32/xiaozhi-esp32-main/main/fusion/\")",
+      "Bash(cp \"D:/embed32/s3example/rgblcd43/01_lvgl_transplant/main/APP/sleep_algorithm.h\" \"d:/embed32/xiaozhi-esp32-main/main/fusion/\")",
+      "Bash(cp \"D:/embed32/s3example/rgblcd43/01_lvgl_transplant/main/APP/sleep_logger.c\" \"d:/embed32/xiaozhi-esp32-main/main/fusion/\")",
+      "Bash(cp \"D:/embed32/s3example/rgblcd43/01_lvgl_transplant/main/APP/sleep_logger.h\" \"d:/embed32/xiaozhi-esp32-main/main/fusion/\")"
+    ]
+  }
+}

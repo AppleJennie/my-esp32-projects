@@ -25,6 +25,7 @@ ESP32 开发板（atk-dnesp32s3，固件 xiaozhi-esp32 v2.4.2）
 - `persona/persona.md` — 沈星回人设 prompt（服务端 `prompt` 字段的源文件）
 - `deploy/` — 云服务器部署配置（docker-compose.yml + 脱敏的配置模板 .config.example.yaml）
 - `tools/persona_test.py` — 人设 10 轮对话稳定性测试脚本（需 `export ZHIPU_API_KEY=...`）
+- `tools/voice_clone_train.py` — 火山声音复刻 V3 API 训练/查询脚本（密钥已脱敏，填入后使用）
 
 ## 说明
 

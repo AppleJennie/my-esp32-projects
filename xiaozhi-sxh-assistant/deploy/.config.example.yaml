@@ -68,16 +68,18 @@ LLM:
     api_key: <你的智谱GLM API key>
 
 TTS:
-  # 火山双流式语音合成 + 沈星回克隆音色（2026-08-25 开通）
+  # 火山双流式语音合成 + 克隆音色（ICL2.0，112 秒素材训练）
+  # 注意：克隆音色训练走"新版控制台 API Key + /api/v3/tts/voice_clone + 预付费音色槽位 S_xxx"，
+  # 合成时小智服务端用旧版鉴权（appid+access_token），详见 docs/WORK_SUMMARY.md 第 7 节
   HuoshanDoubleStreamTTS:
     type: huoshan_double_stream
     ws_url: wss://openspeech.bytedance.com/api/v3/tts/bidirection
     appid: <你的火山引擎 App ID>
     access_token: <你的火山 Access Token>
-    resource_id: volc.service_type.10029
-    speaker: <克隆音色 ID，S_xxxxxxxx>
+    resource_id: seed-icl-2.0   # ICL1.0 音色用 seed-icl-1.0
+    speaker: <预付费音色槽位 ID，S_xxxxxxxx>
     audio_params:
-      speech_rate: 0
+      speech_rate: -8   # 角色语速偏慢，负值减速（范围 -50~100）
       loudness_rate: 0
   # 兜底：想切回免费音色时把 selected_module.TTS 改回 EdgeTTS
   EdgeTTS:

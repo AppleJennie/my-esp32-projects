@@ -48,11 +48,37 @@ sudo docker stats --no-stream        # 内存占用
 
 ## 5. 遗留事项
 
-- [ ] 天气插件需单独 API key（问天气会报认证失败，其他功能不受影响）
-- [ ] 服务器登录密码已在对话中暴露，待控制台重置；火山 Access Token 注意保密
-- [ ] 音色相似度优化：可将 2~3 段参考音频拼成 ~40 秒长素材在火山控制台重新克隆
+- [ ] 天气插件需单独 API key（问天气会报认证失败，且因"插件失败 + 二次 LLM 圆场"要 ~43 秒；注册和风天气 dev.qweather.com 免费 key 配上即可秒回，或摘除 get_weather 插件）
+- [ ] 服务器登录密码已在对话中暴露，待控制台重置；火山 Access Token / API Key 注意保密
+- [x] ~~音色相似度优化~~ → 已于 08-25 晚完成（见第 7 节）
 - [ ] moji 复刻（见 `../../project/docs/MOJI_ANALYSIS.md`）：推荐 C5 版，BOM 约 ¥105，板型已在上游 `main/boards/movecall/`，可直接 build.py 构建
 - [ ] sxh_01 参考音频音量偏小，人工校对后可决定是否弃用
+
+## 7. 音色升级攻坚战（08-25 晚，已通过验收）
+
+**结果**：音色从"12 秒素材训练的 ICL1.0"升级为"112 秒婚卡台词训练的 ICL2.0（model_type=5）"，用户板子验收通过。
+
+**最终生效配置**（`~/xiaozhi-server/data/.config.yaml`，旧配置已注释备份在同文件内）：
+
+| 项 | 值 |
+|---|---|
+| appid / access_token | 新应用 `3739237418`（旧应用 2215079862 弃用） |
+| resource_id | `seed-icl-2.0` |
+| speaker | `S_DX79g48d2`（付费音色槽位，剩余训练次数 13） |
+| speech_rate | -8（沈星回语速偏慢） |
+
+**素材处理**：桌面 `沈星回.mp3` 实为手机录屏视频（HEVC + AAC 44.1kHz，1:58），抽音轨 → silencedetect 切分 → faster-whisper 转写逐句校验（确认是婚卡台词）→ 剔除开头 6 秒他人声 → 输出 112 秒 24kHz 单声道 WAV（5.4MB）+ 55 秒备用版（均在桌面）。训练参数：`enable_crop_by_asr=true`（防切字）、`voice_clone_enable_mss=true`（音源分离去 BGM）。
+
+**踩坑记录（本次最有价值的部分）**：
+
+1. **声音复刻的权限是三层分离的**：① 控制台界面克隆（买应用时送的流程）② 训练 API（`volc.megatts.timbre`）③ 合成 API（`volc.seedicl.default` 等）——各自独立授权，报错全是 45000030 not granted / 55000000 resource mismatched。控制台能克隆 ≠ API 能训练 ≠ API 能合成。
+2. **可行路径（已验证）**：控制台购买 SeedICL 预付费音色槽位（得 `S_` 开头 ID）→ 新版控制台 API Key（X-Api-Key）调 `POST /api/v3/tts/voice_clone` 训练 → 合成时小智服务端用**旧版鉴权**（appid + access_token，`X-Api-App-Key/X-Api-Access-Key`）+ `resource_id: seed-icl-2.0`。xiaozhi 的 huoshan_double_stream provider 只支持旧版鉴权头。
+3. **V3 训练一次得两个效果**：返回 model_type 1（ICL1.0）和 5（ICL V3），合成时分别对应 resource_id `seed-icl-1.0` / `seed-icl-2.0`，2.0 效果更好。
+4. **unidirectional 与 bidirection 端点授权独立**：单向 HTTP 端点 403 不代表线上双向流式不通——旧应用曾"API 测试全 403 但设备照常说话"，虚惊一场，诊断时别被误导。
+5. **我自己的失误**：`restart_server.sh` 只重启不拷贝 `/tmp/xz_upload/.config.yaml`，导致语速调整和新音色切换两次"假生效"（用户报"音色没变"才暴露）。已修复：脚本改为 cp + 备份 + 容器内 grep 验证。**改配置必须验证容器内文件，不能只看重启成功**。
+6. 火山新旧控制台双轨：新控制台用 X-Api-Key 单钥，旧控制台用 appid+token；资源按项目隔离。
+
+**试听文件（桌面）**：`沈星回_新音色试听.mp3`（官方 demo）、`沈星回_新音色_合成测试_icl10.mp3` / `_icl20.mp3`（同一句话两种效果对比）。
 
 ## 6. 相关文件索引
 

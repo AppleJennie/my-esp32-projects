@@ -86,3 +86,12 @@ TTS:
     type: edge
     voice: zh-CN-YunyangNeural   # 云扬：沉稳男声，沈星回的 EdgeTTS 兜底音色
     output_dir: tmp/
+
+# 天气插件（和风天气）：申请免费 key 后填入即可启用，每天 1000 次免费
+# 申请地址：https://console.qweather.com/#/apps/create-key/over
+# 申请后在 https://console.qweather.com/setting?lang=zh 查看自己的 api_host
+plugins:
+  get_weather:
+    api_host: "<你的和风 api_host，形如 xxxx.re.qweatherapi.com>"
+    api_key: "<你的和风天气 API key>"
+    default_location: "太原"

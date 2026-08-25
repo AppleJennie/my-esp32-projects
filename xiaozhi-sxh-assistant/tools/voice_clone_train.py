@@ -9,7 +9,7 @@ import urllib.request
 
 APPID = "<旧版控制台appid，新版用API Key见文件尾>"
 TOKEN = "<access_token>"
-SPEAKER = "S_DX79g48d2"  # 当前槽位
+SPEAKER = "<音色槽位ID，S_开头>"  # 填入你的槽位
 
 HEADERS = {
     "Content-Type": "application/json",

@@ -62,9 +62,9 @@ sudo docker stats --no-stream        # 内存占用
 
 | 项 | 值 |
 |---|---|
-| appid / access_token | 新应用 `3739237418`（旧应用 2215079862 弃用） |
+| appid / access_token | 新应用（旧应用已弃用；实际值见服务器 `~/xiaozhi-server/data/.config.yaml`，不入库） |
 | resource_id | `seed-icl-2.0` |
-| speaker | `S_DX79g48d2`（付费音色槽位，剩余训练次数 13） |
+| speaker | 付费音色槽位 `S_xxx`（剩余训练次数 13；实际值见服务器配置，不入库） |
 | speech_rate | -8（沈星回语速偏慢） |
 
 **素材处理**：桌面 `沈星回.mp3` 实为手机录屏视频（HEVC + AAC 44.1kHz，1:58），抽音轨 → silencedetect 切分 → faster-whisper 转写逐句校验（确认是婚卡台词）→ 剔除开头 6 秒他人声 → 输出 112 秒 24kHz 单声道 WAV（5.4MB）+ 55 秒备用版（均在桌面）。训练参数：`enable_crop_by_asr=true`（防切字）、`voice_clone_enable_mss=true`（音源分离去 BGM）。

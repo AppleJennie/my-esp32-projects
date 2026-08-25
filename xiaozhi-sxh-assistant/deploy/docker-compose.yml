@@ -10,6 +10,14 @@ services:
       - seccomp:unconfined
     # 2核2G 硬约束：容器内存上限 1.2G，防止 OOM 拖垮系统
     mem_limit: 1200m
+    # 健康检查：OTA HTTP 接口不通判 unhealthy（配合 restart:always 覆盖进程崩溃；
+    # 如需 unhealthy 自动重启，可另部署 willfarrell/autoheal，见待确认清单）
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8003/xiaozhi/ota/', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
     environment:
       - TZ=Asia/Shanghai
     ports:
